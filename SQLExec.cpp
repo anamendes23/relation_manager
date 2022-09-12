@@ -217,7 +217,44 @@ QueryResult *SQLExec::del(const DeleteStatement *statement) {
 QueryResult *SQLExec::select(const SelectStatement *statement) {
     // SELECT should translate into an evaluation plan with a project plan on a select plan.
     // The enclosed select plan should be annotated with a table scan.
-    return new QueryResult("SELECT statement not yet implemented");  // FIXME
+    // get table name
+    Identifier tableName = statement->fromTable->getName();
+
+    // get table
+    DbRelation &table = SQLExec::tables->get_table(tableName);
+
+    // start base of plan at tablescan
+    EvalPlan *plan = new EvalPlan(table);
+
+    // enclose in select if a where clause
+    if (statement->whereClause != nullptr)
+        plan = new EvalPlan(get_where_conjunction(statement->whereClause), plan);
+
+    // column names to return at end
+    ColumnNames *column_names = new ColumnNames;
+    // column attributes to return at end
+    ColumnAttributes *column_attributes = table.get_column_attributes(*column_names);
+
+    for (auto const& stmt: *statement->selectList) {
+        if (stmt->type == kExprStar) {
+            // if returning all data from table, find all columns
+            ColumnNames columnNames = table.get_column_names();
+            // iterate through column names, push into column names vector
+            for (auto const &col: columnNames)
+                column_names->push_back(col);
+        } else {
+        // if returning from some columns, find those columns
+        // push back
+            column_names->push_back(stmt->name);
+        }
+    }
+    plan = new EvalPlan(column_names, plan);
+
+    // optimize plan and evaluate optimized plan
+    EvalPlan *optimized = plan->optimize();
+    ValueDicts *rows = optimized->evaluate();
+
+    return new QueryResult(column_names, column_attributes, rows, "successfully return " + to_string(rows->size()) + " rows");
 }
 
 void
