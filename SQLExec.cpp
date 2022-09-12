@@ -88,8 +88,63 @@ QueryResult *SQLExec::execute(const SQLStatement *statement) {
     }
 }
 
+ColumnAttribute get_column_type(string column, ColumnNames columns, ColumnAttributes column_types) {
+    for(uint i = 0; i < columns.size(); i++) {
+        if(columns[i] == column) {
+            return column_types[i];
+        }
+    }
+
+    throw SQLExecError("unkown column " + column);
+}
+
 QueryResult *SQLExec::insert(const InsertStatement *statement) {
-    return new QueryResult("INSERT statement not yet implemented");  // FIXME
+    Identifier table_name = statement->tableName;
+    std::vector<char*> insert_columns = *statement->columns;
+    std::vector<Expr*> insert_values = *statement->values;
+    DbRelation &table = SQLExec::tables->get_table(table_name);
+    // add values to row to be inserted
+    ValueDict row;
+    ColumnNames columns = table.get_column_names();
+    ColumnAttributes column_types = table.get_column_attributes();
+    for(uint i = 0; i < insert_values.size(); i++) {
+        // get column by name and check it's info, such as type
+        Identifier column = insert_columns[i];
+        ColumnAttribute column_type = get_column_type(column, columns, column_types);
+
+        switch(column_type.get_data_type()) {
+            case ColumnAttribute::INT:
+                row[column] = Value(insert_values[i]->ival);
+                break;
+            case ColumnAttribute::TEXT:
+                row[column] = Value(insert_values[i]->name);
+                break;
+            default:
+                throw SQLExecError("don't know how to handle data type in INSERT");
+        }
+    }
+    // insert into table
+    Handle insert_handle = table.insert(&row);
+
+    // update index
+    IndexNames index_names = SQLExec::indices->get_index_names(table_name);
+    // for each index name in that table, get the index and insert the row handle
+    for(auto const& index_name : index_names) {
+        DbIndex &index = SQLExec::indices->get_index(table_name, index_name);
+        index.insert(insert_handle);
+    }
+    string suffix = "";
+    if(index_names.size() > 0) {
+        suffix = " and from " + to_string(index_names.size()) + " indices";
+    }
+
+    /*
+        For insert, your job is to construct the ValueDict row to insert and insert it.
+        Also, make sure to add to any indices. Useful methods here are get_table,
+        get_index_names, get_index. Make sure you account for the fact that the user has
+        the ability to list column names in a different order than the table definition. 
+    */
+    return new QueryResult("successfully inserted 1 row into " + table_name + suffix);
 }
 
 QueryResult *SQLExec::del(const DeleteStatement *statement) {
@@ -97,6 +152,8 @@ QueryResult *SQLExec::del(const DeleteStatement *statement) {
 }
 
 QueryResult *SQLExec::select(const SelectStatement *statement) {
+    // SELECT should translate into an evaluation plan with a project plan on a select plan.
+    // The enclosed select plan should be annotated with a table scan.
     return new QueryResult("SELECT statement not yet implemented");  // FIXME
 }
 
