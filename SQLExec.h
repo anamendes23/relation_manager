@@ -1,6 +1,8 @@
 /**
  * @file SQLExec.h - SQLExec class
  * @author Kevin Lundeen
+ * @author Ana Mendes
+ * @author Erika Skornia-Olsen
  * @see "Seattle University, CPSC5300, Spring 2022"
  */
 #pragma once
@@ -70,30 +72,107 @@ protected:
     static Indices *indices;
 
     // recursive decent into the AST
+    /**
+     * @brief calls appropriate create function to either create a table or an index
+     * 
+     * @param statement to create table or index
+     * @return QueryResult* result summary of appropriate create funtion
+     */
     static QueryResult *create(const hsql::CreateStatement *statement);
 
+    /**
+     * @brief creates a table and add it to the relational manager
+     * 
+     * @param statement with parts of SQL query
+     * @return QueryResult* result summary of creating a table
+     */
     static QueryResult *create_table(const hsql::CreateStatement *statement);
 
+    /**
+     * @brief creates an index for a specific table
+     * 
+     * @param statement with parts of SQL query
+     * @return QueryResult* result summary of creating an index
+     */
     static QueryResult *create_index(const hsql::CreateStatement *statement);
 
+    /**
+     * @brief calls appropriate drop function to either drop a table or an index
+     * 
+     * @param statement to drop table or index
+     * @return QueryResult* result summary of appropriate drop funtion
+     */
     static QueryResult *drop(const hsql::DropStatement *statement);
 
+    /**
+     * @brief drops a table and removes all indices associated with it
+     * 
+     * @param statement with parts of SQL query
+     * @return QueryResult* result summary of dropping a table
+     */
     static QueryResult *drop_table(const hsql::DropStatement *statement);
 
+    /**
+     * @brief drops specified index
+     * 
+     * @param statement with parts of SQL query
+     * @return QueryResult* result of dropping the index
+     */
     static QueryResult *drop_index(const hsql::DropStatement *statement);
 
+    /**
+     * @brief calls appropriate show function to either show tables, columns or indices
+     * 
+     * @param statement to show tables, columns or indices
+     * @return QueryResult* result summary of appropriate show funtion
+     */
     static QueryResult *show(const hsql::ShowStatement *statement);
 
+    /**
+     * @brief displays a list of tables in the relational manager
+     * 
+     * @return QueryResult* list of tables
+     */
     static QueryResult *show_tables();
 
+    /**
+     * @brief displays all columns of the specified table
+     * 
+     * @param statement with parts of SQL query
+     * @return QueryResult* list of columns of a table
+     */
     static QueryResult *show_columns(const hsql::ShowStatement *statement);
 
+    /**
+     * @brief shows indices of a table
+     * 
+     * @param statement with parts of SQL query
+     * @return QueryResult* list of indices of a table
+     */
     static QueryResult *show_index(const hsql::ShowStatement *statement);
 
+    /**
+     * @brief inserts a row into a table
+     * 
+     * @param statement with parts of SQL query
+     * @return QueryResult* result summary of adding a row to a table
+     */
     static QueryResult *insert(const hsql::InsertStatement *statement);
 
+    /**
+     * @brief deletes a row from a table
+     * 
+     * @param statement with parts of SQL query
+     * @return QueryResult* result summary of deleting a row from table
+     */
     static QueryResult *del(const hsql::DeleteStatement *statement);
 
+    /**
+     * @brief selects rows from a table
+     * 
+     * @param statement with parts of SQL query
+     * @return QueryResult* list of rows from table
+     */
     static QueryResult *select(const hsql::SelectStatement *statement);
 
     /**

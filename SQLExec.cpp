@@ -1,6 +1,8 @@
 /**
  * @file SQLExec.cpp - implementation of SQLExec class
  * @author Kevin Lundeen
+ * @author Ana Mendes
+ * @author Erika Skornia-Olsen
  * @see "Seattle University, CPSC5300, Spring 2022"
  */
 #include "SQLExec.h"
