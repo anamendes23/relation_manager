@@ -4,6 +4,7 @@
  * @see "Seattle University, CPSC5300, Spring 2022"
  */
 #include "SQLExec.h"
+#include "EvalPlan.h"
 
 using namespace std;
 using namespace hsql;
@@ -147,8 +148,70 @@ QueryResult *SQLExec::insert(const InsertStatement *statement) {
     return new QueryResult("successfully inserted 1 row into " + table_name + suffix);
 }
 
+// Pull out conjunctions of equality predicates from parse tree
+ValueDict* get_where_conjunction(const Expr *expr) {
+    ValueDict* where = new ValueDict();
+    // check if expr is invalid
+    if (expr->type != kExprOperator)
+        throw DbRelationError("Invalid statement");
+
+    // find conjunction AND
+    if (expr->opType == Expr::AND) {
+        // get expression before AND
+        // get expression after AND
+        // place both in where
+        ValueDict* first = get_where_conjunction(expr->expr);
+        ValueDict* second = get_where_conjunction(expr->expr2);
+        where->insert(first->begin(), first->end());
+        where->insert(second->begin(), second->end());
+        delete first;
+        delete second;
+    // find operator: =
+    } else if (expr->opChar == '=') {
+        // put get_value_from_parse values in where
+        string index = expr->expr->name;
+        // for int, place int in where
+        // for string, place string in where
+        if (expr->expr2->type == kExprLiteralInt) {
+          (*where)[index] = Value(int32_t(expr->expr2->ival));
+        } else if (expr->expr2->type == kExprLiteralString) {
+            (*where)[index] = Value(expr->expr2->name);
+        } else {
+            throw DbRelationError("Don't know how to handle " + expr->expr2->type);
+        }
+    }  
+    return where;
+}
+
 QueryResult *SQLExec::del(const DeleteStatement *statement) {
-    return new QueryResult("DELETE statement not yet implemented");  // FIXME
+    // get table name
+    Identifier tableName = statement->tableName;
+
+    // get table
+    DbRelation &table = SQLExec::tables->get_table(tableName);
+
+    // create evaluation plan and execute
+    EvalPlan *plan = new EvalPlan(table);
+    if (statement->expr != nullptr)
+        plan = new EvalPlan(get_where_conjunction(statement->expr), plan);
+    EvalPlan *optimized = plan->optimize();
+    EvalPipeline pipeline = optimized->pipeline();
+
+    // delete all the handles
+    IndexNames index_names = SQLExec::indices->get_index_names(tableName);
+    Handles *handles = pipeline.second;
+    uint rows = 0;
+    uint indices = 0;
+    for (auto const& handle: *handles) {
+        for (auto const& index_name: index_names) {
+            DbIndex &index = SQLExec::indices->get_index(tableName, index_name);
+            index.del(handle);
+            indices++;
+        }
+        table.del(handle);
+        rows++;
+    }
+    return new QueryResult("successfully deleted " + to_string(rows) + " rows from " + tableName + " " + to_string(indices) + " indices");
 }
 
 QueryResult *SQLExec::select(const SelectStatement *statement) {
